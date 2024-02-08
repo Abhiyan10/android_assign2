@@ -88,6 +88,10 @@ fun ContactsList(context: ComponentActivity) {
                 colors = ButtonDefaults.buttonColors(
                     contentColor = Color.Gray,
                     containerColor = Color.White
+
+
+
+
                 )) {
                 Text("Add")
             }
