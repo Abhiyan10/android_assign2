@@ -6,15 +6,18 @@ import android.content.ContentValues
 import android.os.Bundle
 import android.provider.ContactsContract
 import androidx.activity.ComponentActivity
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -63,18 +66,13 @@ fun ContactsList(context: ComponentActivity) {
             onValueChange = { contactNumber = it },
             label = { Text(text = "Contact Number") }
         )
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+
         ) {
-            Button(onClick = {
-                contacts = loadContacts(context)
-            }) {
-                Text("Load")
-            }
+
             Button(onClick = {
                 val newContact = Contact("$contactName", "$contactNumber")
                 addContact(context, newContact)
@@ -82,8 +80,43 @@ fun ContactsList(context: ComponentActivity) {
                 contactNumber = ""
 // Update contacts list
                 contacts = loadContacts(context)
-            }) {
+            },
+                modifier = Modifier
+                    .fillMaxWidth(),
+                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(2.dp, Color.Blue),
+                colors = ButtonDefaults.buttonColors(
+                    contentColor = Color.Gray,
+                    containerColor = Color.White
+                )) {
                 Text("Add")
+            }
+            Button(onClick = {
+                contactName = ""
+                contactNumber = ""
+            },
+                modifier = Modifier
+                    .fillMaxWidth()
+                ,                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(2.dp, Color.Blue),
+                colors = ButtonDefaults.buttonColors(
+                    contentColor = Color.Gray,
+                    containerColor = Color.White
+                )) {
+                Text("Clear")
+            }
+            Button(onClick = {
+                contacts = loadContacts(context)
+            },
+                modifier = Modifier
+                    .fillMaxWidth()
+,                shape = RoundedCornerShape(20.dp),
+                border = BorderStroke(2.dp, Color.Blue),
+                colors = ButtonDefaults.buttonColors(
+                    contentColor = Color.Gray,
+                    containerColor = Color.White
+                )) {
+                Text("Load")
             }
         }
         Divider(modifier = Modifier.padding(vertical = 2.dp))
@@ -97,6 +130,8 @@ fun ContactsList(context: ComponentActivity) {
             }
         }
         Divider(modifier = Modifier.padding(vertical = 2.dp))
+// About section
+        AboutSection()
     }
 }
 
@@ -129,6 +164,14 @@ fun ContactItem(contact: Contact, onDelete: () -> Unit) {
     }
 }
 
+@Composable
+fun AboutSection() {
+    Column() {
+        Text("About section:")
+        Text("Student Name: Abhiyan Bhattarai", fontSize = 16.sp)
+        Text("Student ID: 301370586", fontSize = 16.sp)
+    }
+}
 data class Contact(val displayName: String, val phoneNumber: String, val id : Long?= null)
 
 @SuppressLint("Range")
