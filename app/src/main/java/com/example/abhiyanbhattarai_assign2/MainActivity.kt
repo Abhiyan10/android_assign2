@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
 fun ContactsList(context: ComponentActivity) {
     var contactName by remember { mutableStateOf("") }
     var contactNumber by remember { mutableStateOf("") }
+    var contacts by remember { mutableStateOf(emptyList<Contact>()) }
 // LaunchedEffect to perform data loading
 //    LaunchedEffect(Unit) {
 // Load contacts
@@ -70,20 +71,137 @@ fun ContactsList(context: ComponentActivity) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Button(onClick = {
-
+                contacts = loadContacts(context)
             }) {
                 Text("Load")
             }
             Button(onClick = {
-
+                val newContact = Contact("$contactName", "$contactNumber")
+                addContact(context, newContact)
+                contactName = ""
+                contactNumber = ""
+// Update contacts list
+                contacts = loadContacts(context)
             }) {
                 Text("Add")
             }
         }
-
+        Divider(modifier = Modifier.padding(vertical = 2.dp))
+        LazyColumn() {
+            items(contacts) { contact ->
+                ContactItem(contact) {
+                    deleteContact(context.contentResolver, contact.id)
+// Update contacts list
+                    contacts = loadContacts(context)
+                }
+            }
+        }
+        Divider(modifier = Modifier.padding(vertical = 2.dp))
     }
 }
 
+
+@Composable
+fun ContactItem(contact: Contact, onDelete: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = contact.displayName,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = contact.phoneNumber,
+                fontSize = 16.sp,
+                fontStyle = FontStyle.Italic)
+
+        }
+        Button(onClick = onDelete) {
+            Text("Delete")
+        }
+    }
+}
+
+data class Contact(val displayName: String, val phoneNumber: String, val id : Long?= null)
+
+@SuppressLint("Range")
+fun loadContacts(context: ComponentActivity): List<Contact> {
+    val contacts = mutableListOf<Contact>()
+    context.contentResolver.query(
+        ContactsContract.Contacts.CONTENT_URI,
+        arrayOf(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY, ContactsContract.Contacts._ID),
+        null,
+        null,
+    )?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            do {
+                val displayName =
+                    cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME_PRIMARY))
+                val contactId = cursor.getLong(cursor.getColumnIndex(ContactsContract.Contacts._ID))
+// Query phone numbers associated with this contact
+                context.contentResolver.query(
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
+                    "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                    arrayOf(contactId.toString()),
+                    null
+                )?.use { phoneCursor ->
+                    if (phoneCursor.moveToFirst()) {
+                        val phoneNumber =
+                            phoneCursor.getString(phoneCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                        contacts.add(Contact(displayName, phoneNumber, contactId))
+                    }
+                }
+            } while (cursor.moveToNext())
+        }
+    }
+    return contacts
+}
+
+fun addContact(context: ComponentActivity, contact: Contact) {
+    try {
+        val values = ContentValues().apply {
+            put(ContactsContract.RawContacts.ACCOUNT_TYPE, "")
+            put(ContactsContract.RawContacts.ACCOUNT_NAME, "")
+        }
+        val rawContactUri = context.contentResolver.insert(ContactsContract.RawContacts.CONTENT_URI, values)
+        val rawContactId = rawContactUri?.lastPathSegment?.toLongOrNull()
+// Insert display name
+        val displayNameValues = ContentValues().apply {
+            put(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+            put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+            put(ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, contact.displayName)
+        }
+        context.contentResolver.insert(ContactsContract.Data.CONTENT_URI, displayNameValues)
+// Insert phone number
+        val phoneNumberValues = ContentValues().apply {
+            put(ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+            put(ContactsContract.Data.MIMETYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+            put(ContactsContract.CommonDataKinds.Phone.NUMBER, contact.phoneNumber)
+            put(ContactsContract.CommonDataKinds.Phone.TYPE, ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+        }
+        context.contentResolver.insert(ContactsContract.Data.CONTENT_URI, phoneNumberValues)
+    } catch (e: Exception) {
+// Handle the exception appropriately (e.g., log the error, display a message to the user)
+        e.printStackTrace()
+    }
+}
+fun deleteContact(contentResolver: ContentResolver, contactId: Long? = null) {
+    val whereClause = "${ContactsContract.CommonDataKinds.Phone._ID} = ?"
+    val whereArgs = arrayOf(contactId.toString())
+    contentResolver.delete(
+        ContactsContract.RawContacts.CONTENT_URI,
+        whereClause,
+        whereArgs
+    )
+}
 
 @Preview(showBackground = true)
 @Composable
